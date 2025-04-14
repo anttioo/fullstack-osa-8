@@ -119,9 +119,9 @@ const resolvers = {
   Query: {
     bookCount: () => books.length,
     authorCount: () => authors.length,
-    allBooks: (_, { author = undefined }) => {
+    allBooks: (_, { author = undefined, genre = undefined }) => {
       return books.filter(book => {
-        return author ? book.author === author : true
+        return (!author || book.author === author) && (!genre || book.genres.includes(genre))
       })
     },
     allAuthors: () => {
