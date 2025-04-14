@@ -102,18 +102,21 @@ const typeDefs = `
     id: ID!
     genres: [String!]!
   }
+  
   type Author {
     name: String!
     id: ID!
     born: Int
     bookCount: Int!
   }
+  
   type Query {
     bookCount: Int!
     authorCount: Int!
     allBooks(author: String, genre: String): [Book!]!
     allAuthors: [Author!]!
   }
+  
   type Mutation {
     addBook(
       title: String!, 
@@ -121,6 +124,11 @@ const typeDefs = `
       author: String!, 
       genres: [String!]!
     ): Book
+    
+    editAuthor(
+      name: String!
+      setBornTo: Int!
+    ): Author
   }
 `
 
@@ -150,6 +158,17 @@ const resolvers = {
         authors = authors.concat({ name: author, id: uuid() })
       }
       return createdBook
+    },
+    editAuthor: (_, { name, setBornTo }) => {
+      const author = authors.findIndex(a => a.name === name)
+      if (author === -1) return null
+      const updatedAuthor = { ...authors[author], born: setBornTo }
+      authors = [
+        ...authors.slice(0, author),
+        updatedAuthor,
+        ...authors.slice(author + 1)
+      ]
+      return updatedAuthor
     },
   },
 }
