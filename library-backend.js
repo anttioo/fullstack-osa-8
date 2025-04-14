@@ -14,7 +14,9 @@ mongoose.connect(MONGODB_URI)
         process.exit(1)
     })
 
+
 const {ApolloServer} = require('@apollo/server')
+const { GraphQLError } = require('graphql')
 const {startStandaloneServer} = require('@apollo/server/standalone')
 
 const Book = require('./models/book')
@@ -86,7 +88,21 @@ const resolvers = {
         addBook: async (_, {title, published, author: authorName, genres}) => {
 
             let author = await Author.findOne({ name: authorName })
-                || await Author.create({ name: authorName })
+
+            if (!author) {
+                author = new Author({ name: authorName })
+                try {
+                    await author.save()
+                } catch (error) {
+                    throw new GraphQLError('Saving author failed', {
+                        extensions: {
+                            code: 'BAD_USER_INPUT',
+                            invalidArgs: authorName,
+                            error
+                        }
+                    })
+                }
+            }
 
             const book = new Book({
                 title,
@@ -95,8 +111,17 @@ const resolvers = {
                 genres
             })
 
-            await book.save()
-
+            try {
+                await book.save()
+            } catch (error) {
+                throw new GraphQLError('Saving book failed', {
+                    extensions: {
+                        code: 'BAD_USER_INPUT',
+                        invalidArgs: title,
+                        error
+                    }
+                })
+            }
             return book
         },
         editAuthor: async (_, {name, setBornTo}) => {
