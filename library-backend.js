@@ -63,45 +63,59 @@ const resolvers = {
         bookCount: () => Book.collection.countDocuments(),
         authorCount: () => Author.collection.countDocuments(),
         allBooks: async (_, {author = undefined, genre = undefined}) => {
-            return Book.find({})
 
+            const filters = {}
+
+            if (genre) {
+                filters.genres = { $elemMatch: { $eq: genre } }
+            }
+
+            if (author) {
+                const authorObj = await Author.findOne({ name: author })
+                if (!authorObj) return []
+                filters.author = authorObj._id
+            }
+
+            return Book.find(filters)
         },
         allAuthors: async () => {
             return Author.find({})
         },
     },
     Mutation: {
-        addBook: async (_, {title, published, author, genres}) => {
-            let bookAuthor = await Author.findOne({ name: author })
+        addBook: async (_, {title, published, author: authorName, genres}) => {
 
-            if (!bookAuthor) {
-                bookAuthor = await (new Author({ name: author })).save()
-                    .then(result => {
-                        console.log('author saved!', result)
-                        return result
-                    })
-            }
+            let author = await Author.findOne({ name: authorName })
+                || await Author.create({ name: authorName })
 
             const book = new Book({
                 title,
                 published,
-                author: bookAuthor,
+                author,
                 genres
             })
 
-            return book.save()
+            await book.save()
+
+            return book
+        },
+        editAuthor: async (_, {name, setBornTo}) => {
+            return Author.findOneAndUpdate(
+                { name },
+                { born: setBornTo },
+                { new: true }
+            )
 
         },
-        editAuthor: (_, {name, setBornTo}) => {
-            // const author = authors.findIndex(a => a.name === name)
-            // if (author === -1) return null
-            // const updatedAuthor = { ...authors[author], born: setBornTo }
-            // authors = [
-            //   ...authors.slice(0, author),
-            //   updatedAuthor,
-            //   ...authors.slice(author + 1)
-            // ]
-            // return updatedAuthor
+    },
+    Book: {
+        author: async (root) => {
+            return Author.findById(root.author)
+        },
+    },
+    Author: {
+        bookCount: async (root) => {
+            return Book.countDocuments({ author: root._id })
         },
     },
 }
