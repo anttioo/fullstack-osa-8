@@ -122,11 +122,19 @@ const resolvers = {
             return Book.find(filters)
         },
         allAuthors: async () => {
-            return Author.find({})
+            const authors = await Author.find().lean();
+            const counts = await Book.aggregate([
+                { $group: { _id: "$author", count: { $sum: 1 } } }
+            ])
+
+            const countMap = new Map(counts.map(({_id, count}) => [_id, count]))
+
+            return authors.map(author => ({
+                ...author,
+                bookCount: countMap.get(author._id) || 0
+            }))
         },
-        me: (_, __, {currentUser}) => {
-            return currentUser
-        },
+        me: (_, __, {currentUser}) => currentUser,
     },
     Mutation: {
         addBook: async (_, {title, published, author: authorName, genres}, {currentUser}) => {
